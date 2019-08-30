@@ -1,6 +1,7 @@
 <?php
-	// Load dependencies
-	require __DIR__ . '/vendor/autoload.php';
+	// Load dependencies if using spyc for yaml
+	if (!function_exists('yaml_parse_file'))
+		require __DIR__ . '/vendor/autoload.php';
 
 	// Include the i18n class. In a separate project this step is not needed since
 	// it will be loaded by the auto loader above
