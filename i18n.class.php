@@ -153,7 +153,7 @@ class i18n {
         if ($this->staticMap) {
             $smap_hctx = hash_init('md5');
             $new_staticMap = array();
-            sort($this->staticMap);
+            ksort($this->staticMap);
             foreach ($this->staticMap as $placeholder => $repl) {
                 hash_update($smap_hctx, $placeholder . $repl);
                 $new_staticMap['{' . $placeholder . '}'] = $repl;
