@@ -326,7 +326,7 @@ class i18n {
                 if (!preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $fullName)) {
                     throw new InvalidArgumentException(__CLASS__ . ": Cannot compile translation key " . $fullName . " because it is not a valid PHP identifier.");
                 }
-                $code .= 'const ' . $fullName . ' = \'' . str_replace('\'', '\\\'', $value) . "';\n";
+                $code .= 'const ' . $fullName . ' = \'' . addslashes($value) . "';\n";
             }
         }
         return $code;
