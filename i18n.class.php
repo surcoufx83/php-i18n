@@ -93,8 +93,6 @@ class i18n {
     protected $userLangs = array();
 
     protected $appliedLang = NULL;
-    protected $langFilePath = NULL;
-    protected $cacheFilePath = NULL;
     protected $isInitialized = false;
 
 
@@ -135,11 +133,13 @@ class i18n {
 
         $this->userLangs = $this->getUserLangs();
 
+        $langFilePath = NULL;
+
         // search for language file
         $this->appliedLang = NULL;
         foreach ($this->userLangs as $priority => $langcode) {
-            $this->langFilePath = $this->getConfigFilename($langcode);
-            if (file_exists($this->langFilePath)) {
+            $langFilePath = $this->getConfigFilename($langcode);
+            if (file_exists($langFilePath)) {
                 $this->appliedLang = $langcode;
                 break;
             }
@@ -163,16 +163,18 @@ class i18n {
             unset($new_staticMap, $smap_hctx);
         }
 
+        $cacheFilePath = NULL;
+
         // search for cache file
-        $this->cacheFilePath = $this->cachePath . '/php_i18n_' . md5_file(__FILE__) . '_' . ($smap_hash ? $smap_hash . '_' : '') . $this->prefix . '_' . $this->appliedLang . '.cache.php';
+        $cacheFilePath = $this->cachePath . '/php_i18n_' . md5_file(__FILE__) . '_' . ($smap_hash ? $smap_hash . '_' : '') . $this->prefix . '_' . $this->appliedLang . '.cache.php';
 
         // whether we need to create a new cache file
-        $outdated = !file_exists($this->cacheFilePath) ||
-            filemtime($this->cacheFilePath) < filemtime($this->langFilePath) || // the language config was updated
-            ($this->mergeFallback && filemtime($this->cacheFilePath) < filemtime($this->getConfigFilename($this->fallbackLang))); // the fallback language config was updated
+        $outdated = !file_exists($cacheFilePath) ||
+            filemtime($cacheFilePath) < filemtime($langFilePath) || // the language config was updated
+            ($this->mergeFallback && filemtime($cacheFilePath) < filemtime($this->getConfigFilename($this->fallbackLang))); // the fallback language config was updated
 
         if ($outdated) {
-            $config = $this->load($this->langFilePath);
+            $config = $this->load($langFilePath);
             if ($this->mergeFallback)
                 $config = array_replace_recursive($this->load($this->getConfigFilename($this->fallbackLang)), $config);
 
@@ -189,14 +191,14 @@ class i18n {
 			if( ! is_dir($this->cachePath))
 				mkdir($this->cachePath, 0755, true);
 
-            if (file_put_contents($this->cacheFilePath, $compiled) === FALSE) {
-                throw new Exception("Could not write cache file to path '" . $this->cacheFilePath . "'. Is it writable?");
+            if (file_put_contents($cacheFilePath, $compiled) === FALSE) {
+                throw new Exception("Could not write cache file to path '" . $cacheFilePath . "'. Is it writable?");
             }
-            chmod($this->cacheFilePath, 0755);
+            chmod($cacheFilePath, 0755);
 
         }
 
-        require_once $this->cacheFilePath;
+        require_once $cacheFilePath;
     }
 
     public function isInitialized() {
