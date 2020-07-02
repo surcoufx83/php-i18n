@@ -253,8 +253,7 @@ class i18n {
   }
 
   public function finishSetup() : bool {
-    if (!$this->isInitialized)
-      $this->initConfiguration();
+    $this->initConfiguration();
     require_once $this->cacheFiles[$this->appliedLang];
     return true;
   }
