@@ -1,6 +1,4 @@
 language: php
 php:
   - '7.2'
-install:
-  - composer require mustangostang/spyc:0.6.2
 script: phpunit I18NTest
