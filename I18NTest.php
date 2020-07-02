@@ -2,7 +2,6 @@
 
 use PHPUnit\Framework\TestCase;
 use I18N\i18n;
-use I18N\L;
 
 require_once 'i18n.class.php';
 
