@@ -65,6 +65,15 @@ class i18n {
      */
     protected $sectionSeparator = '_';
 
+    /**
+     * Static string replacements
+     * This is an array of placeholders and their replacement values to be statically replaced. For example if you have
+     * a string 'My {TYPE} string', and staticMap contains 'TYPE' => 'Favorite', then the resulting string will be 'My Favorite string'.
+     *
+     * @var array
+     */
+    protected $staticMap = array();
+
 
     /*
      * The following properties are only available after calling init().
@@ -86,8 +95,6 @@ class i18n {
     protected $userLangs = array();
 
     protected $appliedLang = NULL;
-    protected $langFilePath = NULL;
-    protected $cacheFilePath = NULL;
     protected $isInitialized = false;
 
 
@@ -128,11 +135,13 @@ class i18n {
 
         $this->userLangs = $this->getUserLangs();
 
+        $langFilePath = NULL;
+
         // search for language file
         $this->appliedLang = NULL;
         foreach ($this->userLangs as $priority => $langcode) {
-            $this->langFilePath = $this->getConfigFilename($langcode);
-            if (file_exists($this->langFilePath)) {
+            $langFilePath = $this->getConfigFilename($langcode);
+            if (file_exists($langFilePath)) {
                 $this->appliedLang = $langcode;
                 break;
             }
@@ -141,16 +150,33 @@ class i18n {
             throw new RuntimeException('No language file was found.');
         }
 
+        // initialize and hash staticMap
+        $smap_hash = NULL;
+        if ($this->staticMap) {
+            $smap_hctx = hash_init('md5');
+            $new_staticMap = array();
+            ksort($this->staticMap);
+            foreach ($this->staticMap as $placeholder => $repl) {
+                hash_update($smap_hctx, $placeholder . $repl);
+                $new_staticMap['{' . $placeholder . '}'] = $repl;
+            }
+            $smap_hash = hash_final($smap_hctx);
+            $this->staticMap = $new_staticMap;
+            unset($new_staticMap, $smap_hctx);
+        }
+
+        $cacheFilePath = NULL;
+
         // search for cache file
-        $this->cacheFilePath = $this->cachePath . '/php_i18n_' . md5_file(__FILE__) . '_' . $this->prefix . '_' . $this->appliedLang . '.cache.php';
+        $cacheFilePath = $this->cachePath . '/php_i18n_' . md5_file(__FILE__) . '_' . ($smap_hash ? $smap_hash . '_' : '') . $this->prefix . '_' . $this->appliedLang . '.cache.php';
 
         // whether we need to create a new cache file
-        $outdated = !file_exists($this->cacheFilePath) ||
-            filemtime($this->cacheFilePath) < filemtime($this->langFilePath) || // the language config was updated
-            ($this->mergeFallback && filemtime($this->cacheFilePath) < filemtime($this->getConfigFilename($this->fallbackLang))); // the fallback language config was updated
+        $outdated = !file_exists($cacheFilePath) ||
+            filemtime($cacheFilePath) < filemtime($langFilePath) || // the language config was updated
+            ($this->mergeFallback && filemtime($cacheFilePath) < filemtime($this->getConfigFilename($this->fallbackLang))); // the fallback language config was updated
 
         if ($outdated) {
-            $config = $this->load($this->langFilePath);
+            $config = $this->load($langFilePath);
             if ($this->mergeFallback)
                 $config = array_replace_recursive($this->load($this->getConfigFilename($this->fallbackLang)), $config);
 
@@ -161,20 +187,20 @@ class i18n {
             	. "\n}\n}\n"
             	. "function ".$this->prefix .'($string, $args=NULL) {'."\n"
             	. '    $return = constant("'.$this->prefix.'::".$string);'."\n"
-            	. '    return $args ? vsprintf($return,$args) : $return;'
+            	. '    return $args !== NULL ? vsprintf($return,$args) : $return;'
             	. "\n}";
 
 			if( ! is_dir($this->cachePath))
 				mkdir($this->cachePath, 0755, true);
 
-            if (file_put_contents($this->cacheFilePath, $compiled) === FALSE) {
-                throw new Exception("Could not write cache file to path '" . $this->cacheFilePath . "'. Is it writable?");
+            if (file_put_contents($cacheFilePath, $compiled) === FALSE) {
+                throw new Exception("Could not write cache file to path '" . $cacheFilePath . "'. Is it writable?");
             }
-            chmod($this->cacheFilePath, 0755);
+            chmod($cacheFilePath, 0755);
 
         }
 
-        require_once $this->cacheFilePath;
+        require_once $cacheFilePath;
     }
 
     public function isInitialized() {
@@ -226,6 +252,11 @@ class i18n {
     public function setSectionSeparator($sectionSeparator) {
         $this->fail_after_init();
         $this->sectionSeparator = $sectionSeparator;
+    }
+
+    public function setStaticMap($map) {
+        $this->fail_after_init();
+        $this->staticMap = $map;
     }
 
     /**
@@ -286,14 +317,10 @@ class i18n {
         $userLangs = array_unique($userLangs);
 
         // remove illegal userLangs
-        $userLangs2 = array();
-        foreach ($userLangs as $key => $value) {
-            // only allow a-z, A-Z and 0-9 and _ and -
-            if (preg_match('/^[a-zA-Z0-9_-]*$/', $value) === 1)
-                $userLangs2[$key] = $value;
-        }
+        // only allow a-z, A-Z and 0-9 and _ and -
+        $userLangs = preg_grep('/^[a-zA-Z0-9_-]*$/', $userLangs);
 
-        return $userLangs2;
+        return $userLangs;
     }
 
     protected function getConfigFilename($langcode) {
@@ -338,7 +365,8 @@ class i18n {
                 if (!preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $fullName)) {
                     throw new InvalidArgumentException(__CLASS__ . ": Cannot compile translation key " . $fullName . " because it is not a valid PHP identifier.");
                 }
-                $code .= 'const ' . $fullName . ' = \'' . str_replace('\'', '\\\'', $value) . "';\n";
+                $value = str_replace(array_keys($this->staticMap), $this->staticMap, $value);
+                $code .= 'const ' . $fullName . ' = \'' . addslashes($value) . "';\n";
             }
         }
         return $code;
