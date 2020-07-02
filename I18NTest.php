@@ -14,7 +14,7 @@ final class I18NTest extends TestCase
 
   protected function setUp() : void {
     parent::setUp();
-    $this->i18n = new i18n();
+    $this->i18n = new i18n('./lang/lang_{LANGUAGE}.ini');
   }
 
   public function testGetAppliedLangBeforeInit() : void {
@@ -34,7 +34,7 @@ final class I18NTest extends TestCase
   }
 
   public function testGetFilePath() : void {
-    $this->assertEquals('./lang/lang_{LANGUAGE}.yml', $this->i18n->getFilePath());
+    $this->assertEquals('./lang/lang_{LANGUAGE}.ini', $this->i18n->getFilePath());
     $test2 = new i18n('foo');
     $this->assertEquals('foo', $test2->getFilePath());
   }
