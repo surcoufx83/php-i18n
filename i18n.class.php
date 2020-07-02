@@ -305,7 +305,7 @@ class i18n {
       if ($this->mergeFallback)
         $config = array_replace_recursive($this->loadConfiguration($this->getConfigFilename($this->fallbackLang)), $config);
 
-      $compiled = "<?php namespace I18N; class " . $this->prefix . " {\n"
+      $compiled = "<?php class " . $this->prefix . " {\n"
       	. $this->compile($config)
       	. 'public static function __callStatic($string, $args) {' . "\n"
       	. '    return vsprintf(constant("self::" . $string), $args);'
