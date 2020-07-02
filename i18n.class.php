@@ -304,7 +304,7 @@ class i18n {
     if ($outdated) {
       $config = $this->loadConfiguration($langFilePath);
       if ($this->mergeFallback)
-        $config = array_replace_recursive($this->load($this->getConfigFilename($this->fallbackLang)), $config);
+        $config = array_replace_recursive($this->loadConfiguration($this->getConfigFilename($this->fallbackLang)), $config);
 
       $compiled = "<?php namespace I18N; class " . $this->prefix . " {\n"
       	. $this->compile($config)
