@@ -7,6 +7,8 @@
  * License: MIT
  */
 
+namespace I18N;
+
 class i18n {
 
     /**
@@ -15,7 +17,7 @@ class i18n {
      *
      * @var string
      */
-    protected $filePath = './lang/lang_{LANGUAGE}.ini';
+    protected $filePath = './lang/lang_{LANGUAGE}.yml';
 
     /**
      * Cache file path
@@ -93,7 +95,6 @@ class i18n {
      * @var array
      */
     protected $userLangs = array();
-
     protected $appliedLang = NULL;
     protected $isInitialized = false;
 
@@ -128,7 +129,7 @@ class i18n {
 
     public function init() : i18n {
         if ($this->isInitialized()) {
-            throw new BadMethodCallException('This object from class ' . __CLASS__ . ' is already initialized. It is not possible to init one object twice!');
+            throw new \BadMethodCallException('This object from class ' . __CLASS__ . ' is already initialized. It is not possible to init one object twice!');
         }
 
         $this->isInitialized = true;
@@ -147,7 +148,7 @@ class i18n {
             }
         }
         if ($this->appliedLang == NULL) {
-            throw new RuntimeException('No language file was found.');
+            throw new \RuntimeException('No language file was found.');
         }
 
         // initialize and hash staticMap
@@ -180,7 +181,7 @@ class i18n {
             if ($this->mergeFallback)
                 $config = array_replace_recursive($this->load($this->getConfigFilename($this->fallbackLang)), $config);
 
-            $compiled = "<?php class " . $this->prefix . " {\n"
+            $compiled = "<?php namespace I18N; class " . $this->prefix . " {\n"
             	. $this->compile($config)
             	. 'public static function __callStatic($string, $args) {' . "\n"
             	. '    return vsprintf(constant("self::" . $string), $args);'
@@ -194,7 +195,7 @@ class i18n {
 				mkdir($this->cachePath, 0755, true);
 
             if (file_put_contents($cacheFilePath, $compiled) === FALSE) {
-                throw new Exception("Could not write cache file to path '" . $cacheFilePath . "'. Is it writable?");
+                throw new \Exception("Could not write cache file to path '" . $cacheFilePath . "'. Is it writable?");
             }
             chmod($cacheFilePath, 0755);
 
@@ -343,13 +344,13 @@ class i18n {
                 elseif (function_exists('spyc_load_file'))
                     $config = spyc_load_file($filename);
                 else
-                    throw new Exception('No suitable YAML parsing methods available! Please install the PHP YAML extension or the spyc library.');
+                    throw new \Exception('No suitable YAML parsing methods available! Please install the PHP YAML extension or the spyc library.');
                 break;
             case 'json':
                 $config = json_decode(file_get_contents($filename), true);
                 break;
             default:
-                throw new InvalidArgumentException($ext . " is not a valid extension!");
+                throw new \InvalidArgumentException($ext . " is not a valid extension!");
         }
         return $config;
     }
@@ -365,7 +366,7 @@ class i18n {
             } else {
                 $fullName = $prefix . $key;
                 if (!preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $fullName)) {
-                    throw new InvalidArgumentException(__CLASS__ . ": Cannot compile translation key " . $fullName . " because it is not a valid PHP identifier.");
+                    throw new \InvalidArgumentException(__CLASS__ . ": Cannot compile translation key " . $fullName . " because it is not a valid PHP identifier.");
                 }
                 $value = str_replace(array_keys($this->staticMap), $this->staticMap, $value);
                 $code .= 'const ' . $fullName . ' = \'' . addslashes($value) . "';\n";
@@ -376,7 +377,7 @@ class i18n {
 
     protected function fail_after_init() : void {
         if ($this->isInitialized()) {
-            throw new BadMethodCallException('This ' . __CLASS__ . ' object is already initalized, so you can not change any settings.');
+            throw new \BadMethodCallException('This ' . __CLASS__ . ' object is already initalized, so you can not change any settings.');
         }
     }
 }

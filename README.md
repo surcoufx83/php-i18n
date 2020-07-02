@@ -1,8 +1,8 @@
 # PHP i18n
 
-[![Latest Stable Version](https://poser.pugx.org/philipp15b/php-i18n/v/stable)](https://packagist.org/packages/philipp15b/php-i18n) [![Build Status](https://travis-ci.org/Philipp15b/php-i18n.svg?branch=master)](https://travis-ci.org/Philipp15b/php-i18n)
+[![Build Status](https://travis-ci.org/surcoufx83/php-i18n.svg?branch=master)](https://travis-ci.org/surcoufx83/php-i18n)
 
-This is a simple i18n class for PHP. Nothing fancy, but fast, because it uses caching and it is easy to use. Try it out!
+This is a simple i18n class for PHP forked from [Philipp15b/php-i18n](https://github.com/Philipp15b/php-i18n). Nothing fancy, but fast, because it uses caching and it is easy to use. Try it out!
 
 Some of its features:
 
@@ -16,20 +16,27 @@ Some of its features:
 ## Requirements
 
 * Write permissions in cache directory
-* PHP 5.2 and above
+* PHP 7.1 and above
 * PHP SPL extension (installed by default)
 
 ## Setup
 
-There's a usable example in the `example.php` file. You just have to follow these easy five steps:
+There are examples in the `example-ini.php` and the `example-yml.php` files. You just have to follow these steps:
 
-### 1. Create language files
+### 1. Load sources
 
-To use this class, you need to create translation files with your translated strings. They can be `.ini`/`.properties`, `.json` or `.yaml` files. This could look like this:
+You can fetch the sources of this project either by downloading the individual files (`i18n.class.php` is the only requirement) or by running composer:
+```
+composer require surcoufx83/php-i18n
+```
+
+### 2. Create language files
+
+To use this class, you need to create translation files with your translated strings. They can be `.ini`/`.properties`, `.json` or `.yml`/`.yaml` files. This could look like this:
 
 `lang_en.ini` (English)
 
-```ini
+```
 greeting = "Hello World!"
 
 [category]
@@ -38,7 +45,7 @@ somethingother = "Something other..."
 
 `lang_de.ini` (German)
 
-```ini
+```
 greeting = "Hallo Welt!"
 
 [category]
@@ -47,19 +54,20 @@ somethingother = "Etwas anderes..."
 
 Save both files in the directory you will set in step 4.
 The files must be named according to the filePath setting, where '{LANGUAGE}' will be replaced by the user's language, e.g. 'en' or 'de'.
+Find more examples in the [lang folder](https://github.com/surcoufx83/php-i18n/tree/master/lang) of this repository.
 
-### 2. Include the class
+### 3. Include and initialize the class
 
-```php
-<?php
-	require_once 'i18n.class.php';
-?>
 ```
-
-### 3. Initialize the class
-```php
 <?php
+
+	use I18N\i18n;
+	use I18N\L;
+
+	require_once 'vendor/surcoufx83/php-i18n/i18n.class.php';
+
 	$i18n = new i18n();
+
 ?>
 ```
 
@@ -67,7 +75,7 @@ The files must be named according to the filePath setting, where '{LANGUAGE}' wi
 
 The possible settings are:
 
-* Language file path (default: `./lang/lang_{LANGUAGE}.ini`)
+* Language file path (default: `./lang/lang_{LANGUAGE}.yml`)
 * Cache file path (default: `./langcache/`)
 * The fallback language, if no one of the user languages is available (default: `en`)
 * A 'prefix', the compiled class name (default `L`)
@@ -75,26 +83,55 @@ The possible settings are:
 * The section separator: this is used to seperate the sections in the language class. If you set the separator to `_abc_` you could access your localized strings via `L::category_abc_stringname` if you use categories in your ini. (default: `_`)
 * Merge keys from the fallback language into the current language
 
-```php
-<?php
+```
+
+  ...
+
+	$i18n = new i18n();
+
 	$i18n->setCachePath('./tmp/cache');
 	$i18n->setFilePath('./langfiles/lang/lang_{LANGUAGE}.ini'); // language file path
 	$i18n->setFallbackLang('en');
-	$i18n->setPrefix('I');
+	$i18n->setPrefix('lang');
 	$i18n->setForcedLang('en'); // force english, even if another user language is available
 	$i18n->setSectionSeparator('_');
 	$i18n->setMergeFallback(false); // make keys available from the fallback language
-?>
+
+
+```
+
+One can use chained methods for setters too:
+
+```
+
+  ...
+
+	$i18n = new i18n();
+
+	$i18n->setCachePath('./tmp/cache')
+	     ->setFilePath('./langfiles/lang/lang_{LANGUAGE}.ini')
+	     ->setFallbackLang('en')
+	     ->setPrefix('lang')
+	     ->setForcedLang('en')
+	     ->setSectionSeparator('_')
+	     ->setMergeFallback(false);
+
+	...
+
+
 ```
 
 #### Shorthand
 
 There is also a shorthand for that: you can set all settings in the constructor.
 
-```php
-<?php
+```
+  ...
+
 	$i18n = new i18n('lang/lang_{LANGUAGE}.ini', 'langcache/', 'en');
-?>
+
+	...
+
 ```
 
 The (all optional) parameters are:
@@ -108,10 +145,12 @@ The (all optional) parameters are:
 
 Call the `init()` file to instruct the class to load the appropriate language file, load the cache file or generate it if it doesn't exist and make the `L` class available so you can access your localizations.
 
-```php
-<?php
+```
+	...
+
 	$i18n->init();
-?>
+
+	...
 ```
 
 ### 6. Use the localizations
@@ -120,8 +159,9 @@ To call your localizations, simply use the `L` class and a class constant for th
 
 In this example, we use the translation string seen in step 1.
 
-```php
-<?php
+```
+  ...
+
 	echo L::greeting;
 	// If 'en' is applied: 'Hello World'
 
@@ -137,7 +177,7 @@ In this example, we use the translation string seen in step 1.
 	echo L($string, $args);
 	// Same as L::last_modified("today");
 
-?>
+	...
 ```
 
 As you can see, you can also call the constant as a function. It will be formatted with [vsprintf](http://php.net/manual/en/function.vsprintf.php).
@@ -164,9 +204,10 @@ If this file doesn't exist, php-i18n will try to find the language file for the 
 
 You can change the user detection by extending the `i18n` class and overriding the `getUserLangs()` method:
 
-```php
-<?php
+```
+
 	require_once 'i18n.class.php';
+
 	class My_i18n extends i18n {
 
 		public function getUserLangs() {
@@ -183,7 +224,7 @@ You can change the user detection by extending the `i18n` class and overriding t
 
 	$i18n = new My_i18n();
 	// [...]
-?>
+
 ```
 
 This very basic extension only uses the GET parameter 'language' and the session parameter 'userlanguage'.
