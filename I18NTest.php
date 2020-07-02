@@ -102,15 +102,15 @@ final class I18NTest extends TestCase
    * @depends testGetAppliedLangBeforeInit
    * @depends testIsInitializedBeforeInit
    */
-  public function testInit() : void {
-    $this->assertNull($this->i18n->init());
+  public function testFinishSetup() : void {
+    $this->assertTrue($this->i18n->finishSetup());
   }
 
   /**
-   * @depends testInit
+   * @depends testFinishSetup
    */
   public function testsAfterInit() : void {
-    $this->i18n->init();
+    $this->i18n->finishSetup();
     $this->assertEquals('en', $this->i18n->getAppliedLang());
     $this->assertTrue($this->i18n->isInitialized());
     $this->assertEquals('Hello World!', L::greeting);

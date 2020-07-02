@@ -97,6 +97,7 @@ class i18n {
   protected $userLangs = [];
   protected $appliedLang = null;
   protected $isInitialized = false;
+  protected $cacheFiles = [];
 
 
   /**
@@ -251,18 +252,19 @@ class i18n {
     return $userLangs;
   }
 
-  public function init() : void {
-    if ($this->isInitialized())
-      return;
+  public function finishSetup() : bool {
+    if (!$this->isInitialized)
+      $this->initConfiguration();
+    require_once $this->cacheFiles[$this->appliedLang];
+    return true;
+  }
 
-    $this->isInitialized = true;
-
+  protected function initConfiguration() : void {
     $this->userLangs = $this->getUserLangs();
-
-    $langFilePath = NULL;
+    $langFilePath = null;
 
     // search for language file
-    $this->appliedLang = NULL;
+    $this->appliedLang = null;
     foreach ($this->userLangs as $priority => $langcode) {
       $langFilePath = $this->getConfigFilename($langcode);
       if (file_exists($langFilePath)) {
@@ -270,7 +272,7 @@ class i18n {
         break;
       }
     }
-    if ($this->appliedLang == NULL) {
+    if (is_null($this->appliedLang)) {
       throw new \RuntimeException('No language file was found.');
     }
 
@@ -300,7 +302,7 @@ class i18n {
       ($this->mergeFallback && filemtime($cacheFilePath) < filemtime($this->getConfigFilename($this->fallbackLang))); // the fallback language config was updated
 
     if ($outdated) {
-      $config = $this->load($langFilePath);
+      $config = $this->loadConfiguration($langFilePath);
       if ($this->mergeFallback)
         $config = array_replace_recursive($this->load($this->getConfigFilename($this->fallbackLang)), $config);
 
@@ -323,7 +325,10 @@ class i18n {
       chmod($cacheFilePath, 0755);
 
     }
-    require_once $cacheFilePath;
+
+    $this->cacheFiles[$this->appliedLang] = $cacheFilePath;
+    $this->isInitialized = true;
+
   }
 
   public function isInitialized() : bool {
@@ -337,7 +342,7 @@ class i18n {
    * @throws \InvalidArgumentException for unknown file extensions
    * @throws \Exception when no method for loading yml (or yaml) can be found.
    */
-  protected function load($filename) : array {
+  protected function loadConfiguration($filename) : array {
     $ext = strtolower(substr(strrchr($filename, '.'), 1));
     switch ($ext) {
       case 'properties':
@@ -363,49 +368,49 @@ class i18n {
   }
 
   public function setCachePath(string $cachePath) : i18n {
-    $this->init();
+    $this->initConfiguration();
     $this->cachePath = $cachePath;
     return $this;
   }
 
   public function setFallbackLang(string $fallbackLang) : i18n {
-    $this->init();
+    $this->initConfiguration();
     $this->fallbackLang = $fallbackLang;
     return $this;
   }
 
   public function setFilePath(string $filePath) : i18n {
-    $this->init();
+    $this->initConfiguration();
     $this->filePath = $filePath;
     return $this;
   }
 
   public function setForcedLang(string $forcedLang) : i18n {
-    $this->init();
+    $this->initConfiguration();
     $this->forcedLang = $forcedLang;
     return $this;
   }
 
   public function setMergeFallback(bool $mergeFallback) : i18n {
-    $this->init();
+    $this->initConfiguration();
     $this->mergeFallback = $mergeFallback;
     return $this;
   }
 
   public function setPrefix(string $prefix) : i18n {
-    $this->init();
+    $this->initConfiguration();
     $this->prefix = $prefix;
     return $this;
   }
 
   public function setSectionSeparator(string $sectionSeparator) : i18n {
-    $this->init();
+    $this->initConfiguration();
     $this->sectionSeparator = $sectionSeparator;
     return $this;
   }
 
   public function setStaticMap(array $map) : i18n {
-    $this->init();
+    $this->initConfiguration();
     $this->staticMap = $map;
     return $this;
   }
