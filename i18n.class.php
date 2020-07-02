@@ -309,7 +309,12 @@ class i18n {
                 break;
             case 'yml':
             case 'yaml':
-                $config = spyc_load_file($filename);
+                if (function_exists('yaml_parse_file'))
+                    $config = yaml_parse_file($filename);
+                elseif (function_exists('spyc_load_file'))
+                    $config = spyc_load_file($filename);
+                else
+                    throw new Exception('No suitable YAML parsing methods available! Please install the PHP YAML extension or the spyc library.');
                 break;
             case 'json':
                 $config = json_decode(file_get_contents($filename), true);
