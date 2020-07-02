@@ -126,7 +126,7 @@ class i18n {
         }
     }
 
-    public function init() {
+    public function init() : i18n {
         if ($this->isInitialized()) {
             throw new BadMethodCallException('This object from class ' . __CLASS__ . ' is already initialized. It is not possible to init one object twice!');
         }
@@ -201,69 +201,71 @@ class i18n {
         }
 
         require_once $cacheFilePath;
+        return $this;
     }
 
-    public function isInitialized() {
+    public function isInitialized() : bool {
         return $this->isInitialized;
     }
 
-    public function getAppliedLang() {
+    public function getAppliedLang() : string {
         return $this->appliedLang;
     }
 
-    public function getCachePath() {
+    public function getCachePath() : string {
         return $this->cachePath;
     }
 
-    public function getFallbackLang() {
+    public function getFallbackLang() : string {
         return $this->fallbackLang;
     }
 
-    public function setFilePath($filePath) {
+    public function setFilePath($filePath) : i18n {
         $this->fail_after_init();
         $this->filePath = $filePath;
+        return $this;
     }
 
-    public function setCachePath($cachePath) {
+    public function setCachePath($cachePath) : i18n {
         $this->fail_after_init();
         $this->cachePath = $cachePath;
+        return $this;
     }
 
-    public function setFallbackLang($fallbackLang) {
+    public function setFallbackLang($fallbackLang) : i18n {
         $this->fail_after_init();
         $this->fallbackLang = $fallbackLang;
+        return $this;
     }
 
-    public function setMergeFallback($mergeFallback) {
+    public function setMergeFallback($mergeFallback) : i18n {
         $this->fail_after_init();
         $this->mergeFallback = $mergeFallback;
+        return $this;
     }
 
-    public function setPrefix($prefix) {
+    public function setPrefix($prefix) : i18n {
         $this->fail_after_init();
         $this->prefix = $prefix;
+        return $this;
     }
 
-    public function setForcedLang($forcedLang) {
+    public function setForcedLang($forcedLang) : i18n {
         $this->fail_after_init();
         $this->forcedLang = $forcedLang;
+        return $this;
     }
 
-    public function setSectionSeparator($sectionSeparator) {
+    public function setSectionSeparator($sectionSeparator) : i18n {
         $this->fail_after_init();
         $this->sectionSeparator = $sectionSeparator;
+        return $this;
     }
 
-    public function setStaticMap($map) {
+    public function setStaticMap($map) : i18n {
         $this->fail_after_init();
         $this->staticMap = $map;
-    }
-
-    /**
-     * @deprecated Use setSectionSeparator.
-     */
-    public function setSectionSeperator($sectionSeparator) {
-        $this->setSectionSeparator($sectionSeparator);
+        return $this;
     }
 
     /**
@@ -280,7 +282,7 @@ class i18n {
      *
      * @return array with the user languages sorted by priority.
      */
-    public function getUserLangs() {
+    public function getUserLangs() : array {
         $userLangs = array();
 
         // Highest priority: forced language
@@ -323,11 +325,11 @@ class i18n {
         return $userLangs;
     }
 
-    protected function getConfigFilename($langcode) {
+    protected function getConfigFilename($langcode) : string {
         return str_replace('{LANGUAGE}', $langcode, $this->filePath);
     }
 
-    protected function load($filename) {
+    protected function load($filename) : array {
         $ext = substr(strrchr($filename, '.'), 1);
         switch ($ext) {
             case 'properties':
@@ -355,7 +357,7 @@ class i18n {
     /**
      * Recursively compile an associative array to PHP code.
      */
-    protected function compile($config, $prefix = '') {
+    protected function compile($config, $prefix = '') : string {
         $code = '';
         foreach ($config as $key => $value) {
             if (is_array($value)) {
@@ -372,7 +374,7 @@ class i18n {
         return $code;
     }
 
-    protected function fail_after_init() {
+    protected function fail_after_init() : void {
         if ($this->isInitialized()) {
             throw new BadMethodCallException('This ' . __CLASS__ . ' object is already initalized, so you can not change any settings.');
         }
