@@ -56,7 +56,7 @@ class i18n {
    *
    * @var string
    */
-  protected $forcedLang = NULL;
+  protected $forcedLang = null;
 
   /**
    * This is the separator used if you use sections in your ini-file.
@@ -74,7 +74,7 @@ class i18n {
    *
    * @var array
    */
-  protected $staticMap = array();
+  protected $staticMap = [];
 
 
   /*
@@ -94,8 +94,8 @@ class i18n {
    *
    * @var array
    */
-  protected $userLangs = array();
-  protected $appliedLang = NULL;
+  protected $userLangs = [];
+  protected $appliedLang = null;
   protected $isInitialized = false;
 
 
@@ -108,7 +108,12 @@ class i18n {
    * @param string [$fallbackLang] This is the language which is used when there is no language file for all other user languages. It has the lowest priority.
    * @param string [$prefix] The class name of the compiled class that contains the translated texts. Defaults to 'L'.
    */
-  public function __construct($filePath = NULL, $cachePath = NULL, $fallbackLang = NULL, $prefix = NULL) {
+  public function __construct(
+    ?string $filePath = null,
+    ?string $cachePath = null,
+    ?string $fallbackLang = null,
+    ?string $prefix = null) {
+
     // Apply settings
     if ($filePath != NULL) {
       $this->filePath = $filePath;
@@ -127,10 +132,128 @@ class i18n {
     }
   }
 
-  public function init() : void {
-    if ($this->isInitialized()) {
-      throw new \BadMethodCallException('This object from class ' . __CLASS__ . ' is already initialized. It is not possible to init one object twice!');
+  /**
+   * Recursively compile an associative array to PHP code.
+   *
+   * @throws \InvalidArgumentException for invalid language configuration key names
+   */
+  protected function compile($config, $prefix = '') : string {
+    $code = '';
+    foreach ($config as $key => $value) {
+      if (is_array($value)) {
+        $code .= $this->compile($value, $prefix . $key . $this->sectionSeparator);
+      } else {
+        $fullName = $prefix . $key;
+        if (!preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $fullName)) {
+          throw new \InvalidArgumentException(__CLASS__ . ": Cannot compile translation key " . $fullName . " because it is not a valid PHP identifier.");
+        }
+        $value = str_replace(array_keys($this->staticMap), $this->staticMap, $value);
+        $code .= 'const ' . $fullName . ' = \'' . addslashes($value) . "';\n";
+      }
     }
+    return $code;
+  }
+
+  public function getAppliedLang() : ?string {
+    return $this->appliedLang;
+  }
+
+  public function getCachePath() : string {
+    return $this->cachePath;
+  }
+
+  protected function getConfigFilename(string $langcode) : string {
+    return str_replace('{LANGUAGE}', $langcode, $this->filePath);
+  }
+
+  public function getFallbackLang() : string {
+    return $this->fallbackLang;
+  }
+
+  public function getFilePath() : string {
+    return $this->filePath;
+  }
+
+  public function getForcedLang() : ?string {
+    return $this->forcedLang;
+  }
+
+  public function getMergeFallback() : bool {
+    return $this->mergeFallback;
+  }
+
+  public function getPrefix() : string {
+    return $this->prefix;
+  }
+
+  public function getSectionSeparator() : string {
+    return $this->sectionSeparator;
+  }
+
+  public function getStaticMap() : array {
+    return $this->staticMap;
+  }
+
+  /**
+   * getUserLangs()
+   * Returns the user languages
+   * Normally it returns an array like this:
+   * 1. Forced language
+   * 2. Language in $_GET['lang']
+   * 3. Language in $_SESSION['lang']
+   * 4. HTTP_ACCEPT_LANGUAGE
+   * 5. Language in $_COOKIE['lang']
+   * 6. Fallback language
+   * Note: duplicate values are deleted.
+   *
+   * @return array with the user languages sorted by priority.
+   */
+  public function getUserLangs() : array {
+    $userLangs = array();
+
+    // Highest priority: forced language
+    if ($this->forcedLang != NULL) {
+      $userLangs[] = $this->forcedLang;
+    }
+
+    // 2nd highest priority: GET parameter 'lang'
+    if (isset($_GET['lang']) && is_string($_GET['lang'])) {
+      $userLangs[] = $_GET['lang'];
+    }
+
+    // 3rd highest priority: SESSION parameter 'lang'
+    if (isset($_SESSION['lang']) && is_string($_SESSION['lang'])) {
+      $userLangs[] = $_SESSION['lang'];
+    }
+
+    // 4th highest priority: HTTP_ACCEPT_LANGUAGE
+    if (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
+      foreach (explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']) as $part) {
+        $userLangs[] = strtolower(substr($part, 0, 2));
+      }
+    }
+
+    // 5th highest priority: COOKIE
+    if (isset($_COOKIE['lang'])) {
+      $userLangs[] = $_COOKIE['lang'];
+    }
+
+    // Lowest priority: fallback
+    $userLangs[] = $this->fallbackLang;
+
+    // remove duplicate elements
+    $userLangs = array_unique($userLangs);
+
+    // remove illegal userLangs
+    // only allow a-z, A-Z and 0-9 and _ and -
+    $userLangs = preg_grep('/^[a-zA-Z0-9_-]*$/', $userLangs);
+
+    return $userLangs;
+  }
+
+  public function init() : void {
+    if ($this->isInitialized())
+      return;
 
     $this->isInitialized = true;
 
@@ -191,7 +314,7 @@ class i18n {
       	. '    return $args !== NULL ? vsprintf($return,$args) : $return;'
       	. "\n}";
 
-    	if( ! is_dir($this->cachePath))
+    	if(!is_dir($this->cachePath))
     		mkdir($this->cachePath, 0755, true);
 
       if (file_put_contents($cacheFilePath, $compiled) === FALSE) {
@@ -204,128 +327,7 @@ class i18n {
   }
 
   public function isInitialized() : bool {
-      return $this->isInitialized;
-  }
-
-  public function getAppliedLang() : string {
-      return $this->appliedLang;
-  }
-
-  public function getCachePath() : string {
-      return $this->cachePath;
-  }
-
-  public function getFallbackLang() : string {
-      return $this->fallbackLang;
-  }
-
-  public function setFilePath($filePath) : i18n {
-      $this->fail_after_init();
-      $this->filePath = $filePath;
-      return $this;
-  }
-
-  public function setCachePath($cachePath) : i18n {
-      $this->fail_after_init();
-      $this->cachePath = $cachePath;
-      return $this;
-  }
-
-  public function setFallbackLang($fallbackLang) : i18n {
-      $this->fail_after_init();
-      $this->fallbackLang = $fallbackLang;
-      return $this;
-  }
-
-  public function setMergeFallback($mergeFallback) : i18n {
-      $this->fail_after_init();
-      $this->mergeFallback = $mergeFallback;
-      return $this;
-  }
-
-  public function setPrefix($prefix) : i18n {
-      $this->fail_after_init();
-      $this->prefix = $prefix;
-      return $this;
-  }
-
-  public function setForcedLang($forcedLang) : i18n {
-      $this->fail_after_init();
-      $this->forcedLang = $forcedLang;
-      return $this;
-  }
-
-  public function setSectionSeparator($sectionSeparator) : i18n {
-      $this->fail_after_init();
-      $this->sectionSeparator = $sectionSeparator;
-      return $this;
-  }
-
-  public function setStaticMap($map) : i18n {
-      $this->fail_after_init();
-      $this->staticMap = $map;
-      return $this;
-  }
-
-  /**
-   * getUserLangs()
-   * Returns the user languages
-   * Normally it returns an array like this:
-   * 1. Forced language
-   * 2. Language in $_GET['lang']
-   * 3. Language in $_SESSION['lang']
-   * 4. HTTP_ACCEPT_LANGUAGE
-   * 5. Language in $_COOKIE['lang']
-   * 6. Fallback language
-   * Note: duplicate values are deleted.
-   *
-   * @return array with the user languages sorted by priority.
-   */
-  public function getUserLangs() : array {
-      $userLangs = array();
-
-      // Highest priority: forced language
-      if ($this->forcedLang != NULL) {
-          $userLangs[] = $this->forcedLang;
-      }
-
-      // 2nd highest priority: GET parameter 'lang'
-      if (isset($_GET['lang']) && is_string($_GET['lang'])) {
-          $userLangs[] = $_GET['lang'];
-      }
-
-      // 3rd highest priority: SESSION parameter 'lang'
-      if (isset($_SESSION['lang']) && is_string($_SESSION['lang'])) {
-          $userLangs[] = $_SESSION['lang'];
-      }
-
-      // 4th highest priority: HTTP_ACCEPT_LANGUAGE
-      if (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-          foreach (explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']) as $part) {
-              $userLangs[] = strtolower(substr($part, 0, 2));
-          }
-      }
-
-      // 5th highest priority: COOKIE
-      if (isset($_COOKIE['lang'])) {
-        $userLangs[] = $_COOKIE['lang'];
-      }
-
-      // Lowest priority: fallback
-      $userLangs[] = $this->fallbackLang;
-
-      // remove duplicate elements
-      $userLangs = array_unique($userLangs);
-
-      // remove illegal userLangs
-      // only allow a-z, A-Z and 0-9 and _ and -
-      $userLangs = preg_grep('/^[a-zA-Z0-9_-]*$/', $userLangs);
-
-      return $userLangs;
-  }
-
-  protected function getConfigFilename($langcode) : string {
-      return str_replace('{LANGUAGE}', $langcode, $this->filePath);
+    return $this->isInitialized;
   }
 
   /**
@@ -360,36 +362,52 @@ class i18n {
     return $config;
   }
 
-  /**
-   * Recursively compile an associative array to PHP code.
-   *
-   * @throws \InvalidArgumentException for invalid language configuration key names
-   */
-  protected function compile($config, $prefix = '') : string {
-      $code = '';
-      foreach ($config as $key => $value) {
-        if (is_array($value)) {
-          $code .= $this->compile($value, $prefix . $key . $this->sectionSeparator);
-        } else {
-          $fullName = $prefix . $key;
-          if (!preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $fullName)) {
-            throw new \InvalidArgumentException(__CLASS__ . ": Cannot compile translation key " . $fullName . " because it is not a valid PHP identifier.");
-          }
-          $value = str_replace(array_keys($this->staticMap), $this->staticMap, $value);
-          $code .= 'const ' . $fullName . ' = \'' . addslashes($value) . "';\n";
-        }
-      }
-      return $code;
-    }
-
-  /**
-   * Throw an exception if init setter is called after init method.
-   *
-   * @throws \BadMethodCallException always
-   */
-  protected function fail_after_init() : void {
-    if ($this->isInitialized()) {
-      throw new \BadMethodCallException('This ' . __CLASS__ . ' object is already initalized, so you can not change any settings.');
-    }
+  public function setCachePath(string $cachePath) : i18n {
+    $this->init();
+    $this->cachePath = $cachePath;
+    return $this;
   }
+
+  public function setFallbackLang(string $fallbackLang) : i18n {
+    $this->init();
+    $this->fallbackLang = $fallbackLang;
+    return $this;
+  }
+
+  public function setFilePath(string $filePath) : i18n {
+    $this->init();
+    $this->filePath = $filePath;
+    return $this;
+  }
+
+  public function setForcedLang(string $forcedLang) : i18n {
+    $this->init();
+    $this->forcedLang = $forcedLang;
+    return $this;
+  }
+
+  public function setMergeFallback(bool $mergeFallback) : i18n {
+    $this->init();
+    $this->mergeFallback = $mergeFallback;
+    return $this;
+  }
+
+  public function setPrefix(string $prefix) : i18n {
+    $this->init();
+    $this->prefix = $prefix;
+    return $this;
+  }
+
+  public function setSectionSeparator(string $sectionSeparator) : i18n {
+    $this->init();
+    $this->sectionSeparator = $sectionSeparator;
+    return $this;
+  }
+
+  public function setStaticMap(array $map) : i18n {
+    $this->init();
+    $this->staticMap = $map;
+    return $this;
+  }
+
 }
